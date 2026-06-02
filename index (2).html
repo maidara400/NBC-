@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBC — Tableau de bord Intelligence Artificielle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --accent:        #2E74B5;
+  --accent-light:  #4A90D9;
+  --accent-dark:   #1a5289;
+  --accent-soft:   rgba(46,116,181,0.07);
+  --accent-glow:   rgba(46,116,181,0.18);
+  --sidebar-bg:    #0d1b2a;
+  --sidebar-w:     260px;
+  --bg-base:       #f0f4f9;
+  --bg-surface:    #ffffff;
+  --bg-elevated:   #e8eef6;
+  --border:        rgba(46,116,181,0.10);
+  --border-strong: rgba(46,116,181,0.20);
+  --text-primary:  #0d1b2a;
+  --text-secondary:#4a6080;
+  --text-muted:    #8fa3b8;
+  --success:       #059669;
+  --success-bg:    rgba(5,150,105,0.08);
+  --warning:       #d97706;
+  --warning-bg:    rgba(217,119,6,0.08);
+  --danger:        #dc2626;
+  --danger-bg:     rgba(220,38,38,0.08);
+  --gold:          #f59e0b;
+  --gold-bg:       rgba(245,158,11,0.08);
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  16px;
+  --shadow-sm:  0 1px 3px rgba(13,27,42,0.06),0 1px 2px rgba(13,27,42,0.04);
+  --shadow-md:  0 4px 16px rgba(13,27,42,0.08),0 2px 4px rgba(13,27,42,0.04);
+  --shadow-lg:  0 16px 48px rgba(13,27,42,0.13),0 4px 10px rgba(13,27,42,0.06);
+  --font-d: 'Plus Jakarta Sans', sans-serif;
+  --font-b: 'Inter', sans-serif;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { font-size:16px; scroll-behavior:smooth; }
+body { font-family:var(--font-b); background:var(--bg-base); color:var(--text-primary); min-height:100vh; display:flex; }
+
+/* ════════════════════════════════════════
+   SIDEBAR
+════════════════════════════════════════ */
+.sidebar {
+  width:var(--sidebar-w); min-height:100vh; background:var(--sidebar-bg);
+  display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0;
+  z-index:200; overflow-y:auto; transition:transform 0.3s ease;
+}
+
+.sb-logo {
+  padding:20px 18px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  display:flex; align-items:center; gap:11px;
+}
+.sb-logo img { width:44px; height:44px; object-fit:contain; border-radius:8px; background:#fff; padding:3px; flex-shrink:0; }
+.sb-logo-text .name { font-family:var(--font-d); font-weight:800; font-size:14px; color:#fff; line-height:1.2; }
+.sb-logo-text .sub  { font-size:9.5px; color:rgba(255,255,255,0.38); letter-spacing:0.04em; margin-top:1px; }
+
+.sb-section { padding:14px 14px 6px; }
+.sb-section-label { font-size:9px; font-weight:700; color:rgba(255,255,255,0.25); letter-spacing:0.12em; text-transform:uppercase; padding:0 6px; margin-bottom:6px; }
+
+.sb-item {
+  display:flex; align-items:center; gap:10px; padding:9px 10px;
+  border-radius:var(--radius-md); cursor:pointer; transition:all 0.18s;
+  color:rgba(255,255,255,0.55); font-size:12.5px; font-weight:500;
+  text-decoration:none; position:relative; margin-bottom:2px;
+}
+.sb-item:hover    { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.85); }
+.sb-item.active   { background:rgba(46,116,181,0.18); color:#fff; }
+.sb-item.active::before { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--accent-light); border-radius:0 3px 3px 0; }
+.sb-item.locked   { opacity:0.38; cursor:not-allowed; }
+.sb-item.locked:hover { background:transparent; color:rgba(255,255,255,0.38); }
+.sb-icon { font-size:15px; width:20px; text-align:center; flex-shrink:0; }
+.sb-label { flex:1; line-height:1.3; }
+.sb-badge {
+  font-size:9px; font-weight:700; padding:2px 6px; border-radius:999px;
+  white-space:nowrap; flex-shrink:0;
+}
+.sb-badge.live    { background:rgba(5,150,105,0.2); color:#4ade80; }
+.sb-badge.soon    { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.3); }
+.sb-badge.new     { background:rgba(245,158,11,0.2); color:#fbbf24; }
+
+.sb-roi {
+  margin:12px 14px; padding:14px;
+  background:linear-gradient(135deg,rgba(46,116,181,0.18),rgba(46,116,181,0.08));
+  border:1px solid rgba(46,116,181,0.25); border-radius:var(--radius-md);
+}
+.sb-roi-title { font-size:9.5px; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; }
+.sb-roi-row   { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.sb-roi-label { font-size:11px; color:rgba(255,255,255,0.5); }
+.sb-roi-val   { font-family:var(--font-d); font-size:13px; font-weight:800; }
+.sb-roi-val.gold { color:#fbbf24; }
+.sb-roi-val.green{ color:#4ade80; }
+
+.sb-footer {
+  margin-top:auto; padding:14px 16px;
+  border-top:1px solid rgba(255,255,255,0.07);
+}
+.sb-footer-text { font-size:10px; color:rgba(255,255,255,0.2); text-align:center; line-height:1.5; }
+
+/* ── ACCORDION ── */
+.sb-accordion { border-bottom:1px solid rgba(255,255,255,0.05); }
+.sb-acc-trigger {
+  display:flex; align-items:center; gap:9px; padding:10px 14px;
+  cursor:pointer; width:100%; background:none; border:none;
+  color:rgba(255,255,255,0.45); font-size:11px; font-weight:700;
+  letter-spacing:0.08em; text-transform:uppercase; font-family:var(--font-b);
+  transition:color 0.18s;
+}
+.sb-acc-trigger:hover { color:rgba(255,255,255,0.75); }
+.sb-acc-trigger.open  { color:#fff; }
+.sb-acc-arrow { margin-left:auto; font-size:9px; transition:transform 0.2s; opacity:0.4; }
+.sb-acc-trigger.open .sb-acc-arrow { transform:rotate(180deg); opacity:0.8; }
+.sb-acc-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.sb-acc-body { display:none; padding:0 6px 6px; }
+.sb-acc-body.open { display:block; }
+
+/* ════════════════════════════════════════
+   LAYOUT PRINCIPAL
+════════════════════════════════════════ */
+.page-wrap {
+  margin-left:var(--sidebar-w); flex:1; min-width:0;
+  display:flex; flex-direction:column; min-height:100vh;
+}
+
+/* ── HEADER ── */
+.header {
+  background:var(--bg-surface); border-bottom:1px solid var(--border);
+  padding:0 24px; height:60px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:100; box-shadow:var(--shadow-sm);
+}
+.header-left  { display:flex; align-items:center; gap:12px; min-width:0; }
+.header-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.h-logo img { width:32px; height:32px; object-fit:contain; border-radius:6px; }
+.h-title { font-family:var(--font-d); font-weight:700; font-size:14px; color:var(--text-primary); white-space:nowrap; }
+.h-sub   { font-size:11px; color:var(--text-muted); white-space:nowrap; }
+.h-divider { width:1px; height:22px; background:var(--border-strong); flex-shrink:0; }
+
+.badge-live { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; background:var(--success-bg); border:1px solid rgba(5,150,105,0.2); border-radius:999px; font-size:10px; font-weight:600; color:var(--success); letter-spacing:0.05em; text-transform:uppercase; white-space:nowrap; }
+.badge-live::before { content:''; width:5px; height:5px; background:var(--success); border-radius:50%; animation:blink 2s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+.btn-action { display:inline-flex; align-items:center; gap:5px; padding:7px 13px; background:var(--accent-soft); border:1px solid var(--border-strong); border-radius:var(--radius-md); font-size:12px; font-weight:500; color:var(--accent); font-family:var(--font-b); cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+.btn-action:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+.btn-action:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* Hamburger mobile */
+.btn-menu { display:none; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-primary); padding:4px; }
+
+/* ── MAIN ── */
+.main { flex:1; padding:24px 24px 40px; }
+
+/* ── ROI BANNER ── */
+.roi-banner {
+  background:linear-gradient(135deg, #0d1b2a 0%, #1a3560 50%, #0d2640 100%);
+  border-radius:var(--radius-lg); padding:24px 28px; margin-bottom:22px;
+  display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center;
+  position:relative; overflow:hidden;
+  animation:fadeUp 0.5s ease both;
+}
+.roi-banner::before { content:''; position:absolute; top:-40px; right:-40px; width:220px; height:220px; background:radial-gradient(circle,rgba(46,116,181,0.18) 0%,transparent 70%); border-radius:50%; }
+.roi-banner::after  { content:''; position:absolute; bottom:-60px; right:30%; width:160px; height:160px; background:radial-gradient(circle,rgba(245,158,11,0.08) 0%,transparent 70%); border-radius:50%; }
+.roi-left h2 { font-family:var(--font-d); font-size:17px; font-weight:800; color:#fff; margin-bottom:4px; }
+.roi-left p  { font-size:12px; color:rgba(255,255,255,0.45); line-height:1.6; max-width:480px; }
+.roi-metrics { display:flex; gap:12px; position:relative; z-index:1; }
+.roi-metric {
+  text-align:center; padding:14px 18px;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  border-radius:var(--radius-md); backdrop-filter:blur(10px); min-width:90px;
+}
+.roi-metric-val  { font-family:var(--font-d); font-size:22px; font-weight:800; line-height:1; margin-bottom:3px; }
+.roi-metric-label{ font-size:9.5px; color:rgba(255,255,255,0.45); text-transform:uppercase; letter-spacing:0.06em; }
+
+/* ── TABS ── */
+.tabs { display:flex; gap:4px; margin-bottom:20px; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:4px; width:fit-content; overflow-x:auto; max-width:100%; }
+.tab { padding:7px 16px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; color:var(--text-muted); cursor:pointer; transition:all 0.18s; white-space:nowrap; border:none; background:transparent; font-family:var(--font-b); }
+.tab.active { background:var(--accent); color:#fff; }
+.tab:not(.active):hover { color:var(--text-secondary); background:var(--bg-elevated); }
+
+/* ── KPI GRID ── */
+.kpi-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:22px; }
+.kpi-card { background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 18px 16px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; transition:all 0.25s ease; animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.kpi-card:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); border-color:var(--border-strong); }
+.kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--kc,var(--accent)); border-radius:3px 3px 0 0; }
+.kpi-icon  { font-size:18px; margin-bottom:8px; }
+.kpi-value { font-family:var(--font-d); font-size:28px; font-weight:800; color:var(--text-primary); line-height:1; margin-bottom:4px; }
+.kpi-label { font-size:10.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; }
+
+/* ── TOOLBAR ── */
+.toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.toolbar-left { display:flex; align-items:center; gap:8px; flex:1; flex-wrap:wrap; }
+.search-wrap { position:relative; flex:1; min-width:180px; max-width:280px; }
+.search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:12px; color:var(--text-muted); pointer-events:none; }
+.search-input { width:100%; padding:8px 10px 8px 30px; background:var(--bg-surface); border:1px solid var(--border-strong); border-radius:var(--radius-md); font-size:12px; font-family:var(--font-b); color:var(--text-primary); outline:none; transition:all 0.2s; }
+.search-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+.search-input::placeholder { color:var(--text-muted); }
+.filter-select { padding:8px 28px 8px 10px; background:var(--bg-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' stroke='%238fa3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 8px center; border:1px solid var(--border-strong); border-radius:var(--radius-md); font-size:12px; font-family:var(--font-b); color:var(--text-secondary); outline:none; cursor:pointer; appearance:none; transition:all 0.2s; white-space:nowrap; }
+.filter-select:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+.result-count { font-size:12px; color:var(--text-muted); white-space:nowrap; }
+
+/* ── TABLE ── */
+.table-wrap { background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); overflow:hidden; }
+.table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+table { width:100%; border-collapse:collapse; min-width:800px; }
+thead tr { background:var(--bg-elevated); border-bottom:1px solid var(--border-strong); }
+th { padding:10px 14px; font-size:10.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; text-align:left; white-space:nowrap; }
+tbody tr { border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.15s ease; animation:fadeIn 0.3s ease both; }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:var(--accent-soft); }
+tbody tr:hover .row-arrow { opacity:1; transform:translateX(3px); }
+td { padding:12px 14px; font-size:12.5px; color:var(--text-primary); vertical-align:middle; }
+
+.cand-cell { display:flex; align-items:center; gap:10px; }
+.avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent-light)); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0; }
+.cand-name  { font-weight:600; font-size:12.5px; }
+.cand-email { font-size:10.5px; color:var(--text-muted); margin-top:1px; }
+.cand-phone { font-size:10px; color:var(--text-muted); margin-top:1px; }
+
+.score-cell { display:flex; align-items:center; gap:7px; }
+.score-num  { font-family:var(--font-d); font-weight:800; font-size:15px; min-width:20px; }
+.score-track { flex:1; height:4px; background:var(--bg-elevated); border-radius:99px; overflow:hidden; min-width:45px; }
+.score-fill  { height:100%; border-radius:99px; transition:width 1s cubic-bezier(0.16,1,0.3,1); }
+.score-max  { font-size:10px; color:var(--text-muted); }
+
+.mini-scores { display:flex; gap:3px; }
+.ms { width:20px; height:20px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; cursor:help; }
+.ms5 { background:rgba(5,150,105,0.10); color:#059669; }
+.ms3 { background:rgba(217,119,6,0.10); color:#d97706; }
+.ms1 { background:rgba(220,38,38,0.10); color:#dc2626; }
+
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; font-size:10.5px; font-weight:600; white-space:nowrap; }
+.badge::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.b-retenu  { background:var(--success-bg); color:var(--success); border:1px solid rgba(5,150,105,0.2); }
+.b-retenu::before  { background:var(--success); }
+.b-rejete  { background:var(--danger-bg);  color:var(--danger);  border:1px solid rgba(220,38,38,0.2); }
+.b-rejete::before  { background:var(--danger); }
+.b-attente { background:rgba(100,116,139,0.08); color:#64748b; border:1px solid rgba(100,116,139,0.18); }
+.b-attente::before { background:#64748b; }
+
+.dist-b { display:inline-flex; align-items:center; gap:3px; padding:3px 8px; border-radius:999px; font-size:10.5px; font-weight:600; }
+.d-proche { background:rgba(5,150,105,0.08); color:#059669; }
+.d-moyen  { background:rgba(217,119,6,0.08); color:#d97706; }
+.d-loin   { background:rgba(220,38,38,0.08); color:#dc2626; }
+
+.poste-badge { display:inline-block; padding:3px 8px; background:var(--accent-soft); border:1px solid var(--border-strong); border-radius:var(--radius-sm); font-size:10.5px; color:var(--accent-dark); font-weight:500; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.row-arrow { opacity:0; transition:opacity 0.2s, transform 0.2s; color:var(--accent); font-size:13px; }
+.cv-link { color:var(--accent); font-size:11px; text-decoration:none; display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--accent-soft); transition:all 0.15s; white-space:nowrap; }
+.cv-link:hover { background:var(--accent); color:#fff; }
+
+/* ── ERREURS ── */
+.err-table-wrap { background:var(--bg-surface); border:1px solid rgba(220,38,38,0.15); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); overflow:hidden; margin-top:22px; }
+.err-table-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid rgba(220,38,38,0.1); background:rgba(220,38,38,0.025); flex-wrap:wrap; gap:8px; }
+.err-table-title { font-size:12.5px; font-weight:700; color:var(--danger); display:flex; align-items:center; gap:7px; }
+.btn-retraiter { display:inline-flex; align-items:center; gap:4px; padding:5px 11px; background:var(--danger-bg); border:1px solid rgba(220,38,38,0.2); border-radius:var(--radius-md); font-size:11px; font-weight:600; color:var(--danger); cursor:pointer; transition:all 0.2s; font-family:var(--font-b); }
+.btn-retraiter:hover { background:var(--danger); color:#fff; }
+
+/* ── SKELETON ── */
+.skel { background:linear-gradient(90deg,var(--bg-elevated) 25%,rgba(255,255,255,0.7) 50%,var(--bg-elevated) 75%); background-size:200% auto; animation:shimmer 1.4s linear infinite; border-radius:var(--radius-sm); }
+@keyframes shimmer { from{background-position:-200% center} to{background-position:200% center} }
+
+/* ── EMPTY ── */
+.empty { padding:48px; text-align:center; }
+.empty-icon  { font-size:36px; margin-bottom:10px; opacity:0.35; }
+.empty-title { font-size:15px; font-weight:600; color:var(--text-secondary); margin-bottom:3px; }
+.empty-sub   { font-size:12px; color:var(--text-muted); }
+
+/* ── OVERLAY & PANEL ── */
+.overlay { display:none; position:fixed; inset:0; background:rgba(13,27,42,0.32); z-index:300; backdrop-filter:blur(3px); animation:fadeIn 0.2s ease; }
+.overlay.open { display:block; }
+.panel { position:fixed; top:0; right:0; bottom:0; width:520px; max-width:100vw; background:var(--bg-surface); z-index:301; overflow-y:auto; box-shadow:var(--shadow-lg); transform:translateX(100%); transition:transform 0.32s cubic-bezier(0.16,1,0.3,1); }
+.panel.open { transform:translateX(0); }
+.p-header { padding:20px 24px 16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg-surface); z-index:10; }
+.p-close { position:absolute; top:16px; right:18px; width:28px; height:28px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--bg-elevated); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--text-secondary); transition:all 0.2s; }
+.p-close:hover { background:var(--danger-bg); color:var(--danger); border-color:rgba(220,38,38,0.3); }
+.p-name { font-family:var(--font-d); font-size:18px; font-weight:800; color:var(--text-primary); padding-right:40px; margin-bottom:8px; }
+.p-meta { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.p-body { padding:20px 24px; display:flex; flex-direction:column; gap:18px; }
+.p-section { display:flex; flex-direction:column; gap:10px; }
+.p-section-title { font-size:10.5px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em; padding-bottom:7px; border-bottom:1px solid var(--border); }
+.info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.info-item { display:flex; flex-direction:column; gap:2px; }
+.info-label { font-size:9.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; }
+.info-value { font-size:12.5px; color:var(--text-primary); font-weight:500; word-break:break-word; }
+.sd-row { display:flex; flex-direction:column; gap:5px; padding:11px 12px; background:var(--bg-elevated); border-radius:var(--radius-md); border:1px solid var(--border); }
+.sd-head  { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.sd-label { font-size:11.5px; font-weight:600; color:var(--text-secondary); }
+.sd-badge { padding:2px 9px; border-radius:999px; font-size:10.5px; font-weight:700; white-space:nowrap; }
+.sd-track { height:3px; background:rgba(0,0,0,0.06); border-radius:99px; overflow:hidden; }
+.sd-fill  { height:100%; border-radius:99px; }
+.sd-justif { font-size:11px; color:var(--text-secondary); line-height:1.6; }
+.tl-item  { display:flex; gap:11px; }
+.tl-dot   { width:7px; height:7px; border-radius:50%; background:var(--accent); margin-top:4px; flex-shrink:0; }
+.tl-title { font-size:12.5px; font-weight:600; }
+.tl-sub   { font-size:10.5px; color:var(--text-muted); margin-top:2px; }
+.tags { display:flex; flex-wrap:wrap; gap:5px; }
+.tag  { padding:3px 9px; background:var(--accent-soft); border:1px solid var(--border-strong); border-radius:999px; font-size:10.5px; font-weight:500; color:var(--accent-dark); }
+.note-globe { text-align:center; padding:20px; background:var(--bg-elevated); border-radius:var(--radius-lg); border:1px solid var(--border); }
+.note-big { font-family:var(--font-d); font-size:48px; font-weight:800; line-height:1; }
+.note-sub { font-size:13px; color:var(--text-muted); margin-top:3px; }
+.note-bar-track { height:5px; background:rgba(0,0,0,0.07); border-radius:99px; overflow:hidden; margin-top:12px; }
+.note-bar-fill  { height:100%; border-radius:99px; transition:width 1s ease; }
+.note-bar-labels { display:flex; justify-content:space-between; margin-top:4px; font-size:9.5px; color:var(--text-muted); }
+
+/* ── SIDEBAR MOBILE OVERLAY ── */
+.sb-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:199; }
+.sb-overlay.open { display:block; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.s1{animation-delay:0ms}.s2{animation-delay:55ms}.s3{animation-delay:110ms}.s4{animation-delay:165ms}.s5{animation-delay:220ms}.s6{animation-delay:275ms}
+
+/* ── RESPONSIVE ── */
+@media (max-width:1100px) { .kpi-grid { grid-template-columns:repeat(3,1fr); } }
+@media (max-width:900px) {
+  :root { --sidebar-w: 0px; }
+  .sidebar { transform:translateX(-260px); width:260px; }
+  .sidebar.open { transform:translateX(0); }
+  .page-wrap { margin-left:0; }
+  .btn-menu { display:flex; }
+  .roi-banner { grid-template-columns:1fr; }
+  .roi-metrics { flex-wrap:wrap; justify-content:center; }
+}
+@media (max-width:768px) {
+  .main { padding:14px 14px 32px; }
+  .kpi-grid { grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
+  .kpi-value { font-size:22px; }
+  .tabs { width:100%; }
+  .tab { flex:1; text-align:center; padding:6px 8px; font-size:11px; }
+  .panel { width:100vw; }
+  .info-grid { grid-template-columns:1fr; }
+  .roi-banner { padding:18px; }
+  .roi-left h2 { font-size:14px; }
+}
+@media (max-width:480px) {
+  .kpi-grid { grid-template-columns:repeat(2,1fr); }
+  .kpi-card { padding:14px 12px 12px; }
+  .kpi-value { font-size:20px; }
+  .badge-live { display:none; }
+  .h-sub { display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR OVERLAY MOBILE -->
+<div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+<!-- ════ SIDEBAR ════ -->
+<aside class="sidebar" id="sidebar">
+
+  <!-- Logo -->
+  <div class="sb-logo">
+    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_JOhr2lmwpXcnsoHNPTUbaZZkq98bXDdKcA&s" alt="NBC">
+    <div class="sb-logo-text">
+      <div class="name">NBC Sénégal</div>
+      <div class="sub">Plateforme IA · NOX</div>
+    </div>
+  </div>
+
+  <!-- ROI rapide -->
+  <div class="sb-roi">
+    <div class="sb-roi-title">🚀 Impact estimé / mois</div>
+    <div class="sb-roi-row">
+      <span class="sb-roi-label">⏱ Temps économisé</span>
+      <span class="sb-roi-val gold">~180h</span>
+    </div>
+    <div class="sb-roi-row">
+      <span class="sb-roi-label">💰 Coût évité</span>
+      <span class="sb-roi-val green">~720k FCFA</span>
+    </div>
+    <div class="sb-roi-row" style="margin-bottom:0">
+      <span class="sb-roi-label">🤖 Automatisations</span>
+      <span class="sb-roi-val" style="color:#93c5fd">24 flux</span>
+    </div>
+  </div>
+
+  <!-- MODULE 01 -->
+  <div class="sb-accordion">
+    <button class="sb-acc-trigger" onclick="toggleAcc(this)">
+      <span class="sb-acc-dot" style="background:#ef4444"></span>
+      <span>01 — Canaux &amp; IA</span>
+      <span class="sb-badge soon" style="margin-left:auto;margin-right:4px">4</span>
+      <span class="sb-acc-arrow">▼</span>
+    </button>
+    <div class="sb-acc-body">
+      <a class="sb-item locked"><span class="sb-icon">💬</span><span class="sb-label">Bot WhatsApp Business</span></a>
+      <a class="sb-item locked"><span class="sb-icon">📸</span><span class="sb-label">Bot Instagram DM</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🤖</span><span class="sb-label">Assistant IA Cofondatrice</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🛠️</span><span class="sb-label">SAV &amp; Réclamations</span></a>
+    </div>
+  </div>
+
+  <!-- MODULE 02 -->
+  <div class="sb-accordion">
+    <button class="sb-acc-trigger" onclick="toggleAcc(this)">
+      <span class="sb-acc-dot" style="background:#ef4444"></span>
+      <span>02 — Commercial &amp; CRM</span>
+      <span class="sb-badge soon" style="margin-left:auto;margin-right:4px">6</span>
+      <span class="sb-acc-arrow">▼</span>
+    </button>
+    <div class="sb-acc-body">
+      <a class="sb-item locked" onclick="showView('crm')"><span class="sb-icon">📋</span><span class="sb-label">CRM Commandes</span><span class="sb-badge soon">Aperçu</span></a>
+      <a class="sb-item locked"><span class="sb-icon">📄</span><span class="sb-label">Devis Auto PDF</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🧾</span><span class="sb-label">Facturation Auto</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🚚</span><span class="sb-label">Suivi Livraisons</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🗓️</span><span class="sb-label">Planning Déplacements IA</span></a>
+      <a class="sb-item locked"><span class="sb-icon">💰</span><span class="sb-label">Relances Impayés</span></a>
+    </div>
+  </div>
+
+  <!-- MODULE 03 -->
+  <div class="sb-accordion">
+    <button class="sb-acc-trigger" onclick="toggleAcc(this)">
+      <span class="sb-acc-dot" style="background:#6366f1"></span>
+      <span>03 — Stock</span>
+      <span class="sb-badge soon" style="margin-left:auto;margin-right:4px">2</span>
+      <span class="sb-acc-arrow">▼</span>
+    </button>
+    <div class="sb-acc-body">
+      <a class="sb-item locked" onclick="showView('stock')"><span class="sb-icon">📦</span><span class="sb-label">Inventaire &amp; Alertes</span><span class="sb-badge soon">Aperçu</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🔄</span><span class="sb-label">Synchro Stock ↔ Commandes</span></a>
+    </div>
+  </div>
+
+  <!-- MODULE 04 — RH (ouvert par défaut) -->
+  <div class="sb-accordion">
+    <button class="sb-acc-trigger open" onclick="toggleAcc(this)">
+      <span class="sb-acc-dot" style="background:#ef4444"></span>
+      <span>04 — Ressources Humaines</span>
+      <span class="sb-badge live" style="margin-left:auto;margin-right:4px">LIVE</span>
+      <span class="sb-acc-arrow">▼</span>
+    </button>
+    <div class="sb-acc-body open">
+      <a class="sb-item active" onclick="showView('recrutement')"><span class="sb-icon">👥</span><span class="sb-label">Tri &amp; Scoring CV</span><span class="sb-badge live">LIVE</span></a>
+      <a class="sb-item locked"><span class="sb-icon">📝</span><span class="sb-label">Génération Contrats</span></a>
+      <a class="sb-item locked"><span class="sb-icon">📖</span><span class="sb-label">Règlement Intérieur</span></a>
+      <a class="sb-item locked" onclick="showView('pointage')"><span class="sb-icon">⏱️</span><span class="sb-label">Pointage WhatsApp</span><span class="sb-badge soon">Aperçu</span></a>
+      <a class="sb-item locked" onclick="showView('salaires')"><span class="sb-icon">💵</span><span class="sb-label">Bulletins de Salaires</span><span class="sb-badge soon">Aperçu</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🏗️</span><span class="sb-label">Affectation Chantiers</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🌴</span><span class="sb-label">Congés &amp; Absences</span></a>
+    </div>
+  </div>
+
+  <!-- MODULE 05 -->
+  <div class="sb-accordion">
+    <button class="sb-acc-trigger" onclick="toggleAcc(this)">
+      <span class="sb-acc-dot" style="background:#0ea5e9"></span>
+      <span>05 — Marketing</span>
+      <span class="sb-badge soon" style="margin-left:auto;margin-right:4px">3</span>
+      <span class="sb-acc-arrow">▼</span>
+    </button>
+    <div class="sb-acc-body">
+      <a class="sb-item locked" onclick="showView('marketing')"><span class="sb-icon">🎙️</span><span class="sb-label">Scripts &amp; Voix Off IA</span><span class="sb-badge soon">Aperçu</span></a>
+      <a class="sb-item locked"><span class="sb-icon">📱</span><span class="sb-label">Publication Multi-Plateforme</span></a>
+      <a class="sb-item locked"><span class="sb-icon">📊</span><span class="sb-label">Calendrier Éditorial IA</span></a>
+    </div>
+  </div>
+
+  <!-- MODULE 06 -->
+  <div class="sb-accordion">
+    <button class="sb-acc-trigger" onclick="toggleAcc(this)">
+      <span class="sb-acc-dot" style="background:#ef4444"></span>
+      <span>06 — Infrastructure</span>
+      <span class="sb-badge soon" style="margin-left:auto;margin-right:4px">2</span>
+      <span class="sb-acc-arrow">▼</span>
+    </button>
+    <div class="sb-acc-body">
+      <a class="sb-item locked"><span class="sb-icon">✉️</span><span class="sb-label">Migration Google Workspace</span></a>
+      <a class="sb-item locked"><span class="sb-icon">🔔</span><span class="sb-label">Alertes Direction IA</span></a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="sb-footer">
+    <div class="sb-footer-text">Propulsé par <strong style="color:rgba(255,255,255,0.4)">NOX IA</strong><br>24 automatisations · NBC Sénégal</div>
+  </div>
+
+</aside>
+
+<!-- ════ PAGE PRINCIPALE ════ -->
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu" onclick="toggleSidebar()">☰</button>
+      <div class="h-logo">
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_JOhr2lmwpXcnsoHNPTUbaZZkq98bXDdKcA&s" alt="NBC">
+      </div>
+      <div>
+        <div class="h-title">Recrutement IA</div>
+        <div class="h-sub">Évaluation automatique des candidatures</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="badge-live">Live</span>
+      <button class="btn-action" id="btn-refresh" onclick="loadData()">↻ Actualiser</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ════ VUE CRM ════ -->
+    <div id="view-crm" class="view" style="display:none">
+      <div class="roi-banner" style="margin-bottom:22px">
+        <div class="roi-left"><h2>📋 CRM Commandes — Vue direction</h2><p>Toutes vos commandes centralisées, alertes J-5 automatiques, statuts en temps réel. Plus aucun retard oublié.</p></div>
+        <div class="roi-metrics">
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#fbbf24">18</div><div class="roi-metric-label">Commandes<br>actives</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#4ade80">4,2M</div><div class="roi-metric-label">FCFA en cours<br>ce mois</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#f87171">3</div><div class="roi-metric-label">Alertes<br>J-5 actives</div></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>#</th><th>Client</th><th>Produit</th><th>Montant</th><th>Livraison prévue</th><th>Statut</th><th>Alerte</th></tr></thead>
+            <tbody>
+              <tr><td style="color:var(--text-muted);font-size:11px">CMD-047</td><td><div class="cand-cell"><div class="avatar">AF</div><div><div class="cand-name">Aïssatou Fall</div><div class="cand-email">📞 77 432 11 09</div></div></div></td><td style="font-size:12px">Canapé d'angle Lomé + table basse</td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#059669">850 000 FCFA</td><td style="font-size:12px">05/06/2026</td><td><span class="badge b-attente">En préparation</span></td><td><span class="dist-b d-loin">⚠️ J-4</span></td></tr>
+              <tr><td style="color:var(--text-muted);font-size:11px">CMD-046</td><td><div class="cand-cell"><div class="avatar">MD</div><div><div class="cand-name">Moustapha Diop</div><div class="cand-email">📞 76 881 22 44</div></div></div></td><td style="font-size:12px">Chambre complète Dakar Premium</td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#059669">1 350 000 FCFA</td><td style="font-size:12px">08/06/2026</td><td><span class="badge b-attente">Confirmée</span></td><td><span class="dist-b d-loin">⚠️ J-7</span></td></tr>
+              <tr><td style="color:var(--text-muted);font-size:11px">CMD-045</td><td><div class="cand-cell"><div class="avatar">FN</div><div><div class="cand-name">Fatou Ndiaye</div><div class="cand-email">📞 78 563 00 12</div></div></div></td><td style="font-size:12px">Bureau + bibliothèque</td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#059669">420 000 FCFA</td><td style="font-size:12px">03/06/2026</td><td><span class="badge" style="background:var(--success-bg);color:var(--success);border:1px solid rgba(5,150,105,0.2)">Livrée ✓</span></td><td style="color:var(--text-muted);font-size:11px">—</td></tr>
+              <tr><td style="color:var(--text-muted);font-size:11px">CMD-044</td><td><div class="cand-cell"><div class="avatar">IS</div><div><div class="cand-name">Ibrahima Sarr</div><div class="cand-email">📞 70 215 88 37</div></div></div></td><td style="font-size:12px">Salon complet — tissu bordeaux</td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#d97706">980 000 FCFA</td><td style="font-size:12px">12/06/2026</td><td><span class="badge b-attente">En attente fournisseur</span></td><td style="color:var(--text-muted);font-size:11px">—</td></tr>
+              <tr><td style="color:var(--text-muted);font-size:11px">CMD-043</td><td><div class="cand-cell"><div class="avatar">MW</div><div><div class="cand-name">Mariama Wade</div><div class="cand-email">📞 77 904 55 18</div></div></div></td><td style="font-size:12px">Cuisine équipée complète</td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#dc2626">620 000 FCFA</td><td style="font-size:12px">28/05/2026</td><td><span class="badge b-rejete">⚠️ Retard 3j</span></td><td><span class="dist-b d-loin">🔴 Urgent</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:14px 18px;background:var(--bg-surface);border:1px solid rgba(220,38,38,0.15);border-radius:var(--radius-lg);font-size:12.5px;color:var(--text-secondary)">
+        💡 <strong style="color:var(--text-primary)">Sans NBC IA :</strong> vous découvrez le retard quand le client appelle. <strong style="color:var(--accent)">Avec NBC IA :</strong> alerte WhatsApp automatique à J-5, le client est prévenu avant même de se poser la question.
+      </div>
+    </div>
+
+    <!-- ════ VUE STOCK ════ -->
+    <div id="view-stock" class="view" style="display:none">
+      <div class="roi-banner" style="margin-bottom:22px">
+        <div class="roi-left"><h2>📦 Stock en temps réel</h2><p>Inventaire digital avec alertes seuil minimum. Décrémentation automatique à chaque commande. Fini les ruptures découvertes trop tard.</p></div>
+        <div class="roi-metrics">
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#fbbf24">47</div><div class="roi-metric-label">Références<br>en stock</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#f87171">4</div><div class="roi-metric-label">Alertes<br>rupture</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#4ade80">89%</div><div class="roi-metric-label">Taux de<br>disponibilité</div></div>
+        </div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+        <div class="kpi-card s1" style="--kc:#059669"><div class="kpi-icon">🛋️</div><div class="kpi-value" style="color:#059669">12</div><div class="kpi-label">Salons disponibles</div></div>
+        <div class="kpi-card s2" style="--kc:#2E74B5"><div class="kpi-icon">🛏️</div><div class="kpi-value" style="color:#2E74B5">8</div><div class="kpi-label">Chambres disponibles</div></div>
+        <div class="kpi-card s3" style="--kc:#dc2626"><div class="kpi-icon">⚠️</div><div class="kpi-value" style="color:#dc2626">4</div><div class="kpi-label">Sous seuil minimum</div></div>
+        <div class="kpi-card s4" style="--kc:#d97706"><div class="kpi-icon">🔄</div><div class="kpi-value" style="color:#d97706">6</div><div class="kpi-label">Commandes fournisseur</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Référence</th><th>Produit</th><th>Stock actuel</th><th>Seuil mini</th><th>Statut</th><th>Dernière maj</th></tr></thead>
+            <tbody>
+              <tr><td style="font-size:11px;color:var(--text-muted)">NBC-SAL-001</td><td style="font-weight:600;font-size:13px">Canapé d'angle Lomé</td><td style="font-family:var(--font-d);font-size:16px;font-weight:700;color:#059669">7</td><td style="font-size:12px;color:var(--text-muted)">3</td><td><span class="badge b-retenu">Disponible</span></td><td style="font-size:11px;color:var(--text-muted)">Aujourd'hui 09h14</td></tr>
+              <tr><td style="font-size:11px;color:var(--text-muted)">NBC-LIT-003</td><td style="font-weight:600;font-size:13px">Lit King Size Abidjan</td><td style="font-family:var(--font-d);font-size:16px;font-weight:700;color:#d97706">2</td><td style="font-size:12px;color:var(--text-muted)">3</td><td><span class="dist-b d-loin">⚠️ Sous seuil</span></td><td style="font-size:11px;color:var(--text-muted)">Hier 17h40</td></tr>
+              <tr><td style="font-size:11px;color:var(--text-muted)">NBC-BUR-007</td><td style="font-weight:600;font-size:13px">Bureau Directeur Dakar</td><td style="font-family:var(--font-d);font-size:16px;font-weight:700;color:#dc2626">0</td><td style="font-size:12px;color:var(--text-muted)">2</td><td><span class="badge b-rejete">Rupture</span></td><td style="font-size:11px;color:var(--text-muted)">30/05/2026</td></tr>
+              <tr><td style="font-size:11px;color:var(--text-muted)">NBC-SAL-004</td><td style="font-weight:600;font-size:13px">Salon 6 places Sénégal</td><td style="font-family:var(--font-d);font-size:16px;font-weight:700;color:#059669">11</td><td style="font-size:12px;color:var(--text-muted)">4</td><td><span class="badge b-retenu">Disponible</span></td><td style="font-size:11px;color:var(--text-muted)">Aujourd'hui 11h02</td></tr>
+              <tr><td style="font-size:11px;color:var(--text-muted)">NBC-CUI-002</td><td style="font-weight:600;font-size:13px">Cuisine Équipée Moderne</td><td style="font-family:var(--font-d);font-size:16px;font-weight:700;color:#d97706">1</td><td style="font-size:12px;color:var(--text-muted)">2</td><td><span class="dist-b d-loin">⚠️ Sous seuil</span></td><td style="font-size:11px;color:var(--text-muted)">29/05/2026</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ VUE POINTAGE ════ -->
+    <div id="view-pointage" class="view" style="display:none">
+      <div class="roi-banner" style="margin-bottom:22px">
+        <div class="roi-left"><h2>⏱️ Pointage numérique — Mai 2026</h2><p>Chaque employé envoie "PRÉSENT" sur WhatsApp. Tout s'enregistre automatiquement. Calcul des heures, des absences, des retards — sans papier.</p></div>
+        <div class="roi-metrics">
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#4ade80">9</div><div class="roi-metric-label">Employés<br>actifs</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#fbbf24">96%</div><div class="roi-metric-label">Taux de<br>présence</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#f87171">3</div><div class="roi-metric-label">Absences<br>ce mois</div></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Employé</th><th>Poste</th><th>Jours travaillés</th><th>Heures totales</th><th>Absences</th><th>Retards</th><th>Statut mai</th></tr></thead>
+            <tbody>
+              <tr><td><div class="cand-cell"><div class="avatar">KD</div><div><div class="cand-name">Khadija Diallo</div><div class="cand-email">Commerciale</div></div></div></td><td><span class="poste-badge">Commercial</span></td><td style="font-family:var(--font-d);font-size:15px;font-weight:700">22</td><td style="font-size:13px;color:var(--text-secondary)">176h</td><td style="color:#059669;font-weight:600">0</td><td style="color:#d97706;font-weight:600">1</td><td><span class="badge b-retenu">Excellent</span></td></tr>
+              <tr><td><div class="cand-cell"><div class="avatar">OB</div><div><div class="cand-name">Omar Ba</div><div class="cand-email">Livreur</div></div></div></td><td><span class="poste-badge">Logistique</span></td><td style="font-family:var(--font-d);font-size:15px;font-weight:700">20</td><td style="font-size:13px;color:var(--text-secondary)">160h</td><td style="color:#dc2626;font-weight:600">2</td><td style="color:#dc2626;font-weight:600">3</td><td><span class="badge b-attente">À surveiller</span></td></tr>
+              <tr><td><div class="cand-cell"><div class="avatar">AS</div><div><div class="cand-name">Aminata Sow</div><div class="cand-email">Caissière</div></div></div></td><td><span class="poste-badge">Finance</span></td><td style="font-family:var(--font-d);font-size:15px;font-weight:700">22</td><td style="font-size:13px;color:var(--text-secondary)">176h</td><td style="color:#059669;font-weight:600">0</td><td style="color:#059669;font-weight:600">0</td><td><span class="badge b-retenu">Excellent</span></td></tr>
+              <tr><td><div class="cand-cell"><div class="avatar">MT</div><div><div class="cand-name">Moussa Thiam</div><div class="cand-email">Menuisier</div></div></div></td><td><span class="poste-badge">Production</span></td><td style="font-family:var(--font-d);font-size:15px;font-weight:700">21</td><td style="font-size:13px;color:var(--text-secondary)">168h</td><td style="color:#d97706;font-weight:600">1</td><td style="color:#059669;font-weight:600">0</td><td><span class="badge b-retenu">Bien</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ VUE SALAIRES ════ -->
+    <div id="view-salaires" class="view" style="display:none">
+      <div class="roi-banner" style="margin-bottom:22px">
+        <div class="roi-left"><h2>💵 Bulletins de salaires — Mai 2026</h2><p>Générés automatiquement le 25 de chaque mois. Salaire de base + heures supp + primes commerciales calculés sans erreur. Envoyés par WhatsApp à chaque employé.</p></div>
+        <div class="roi-metrics">
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#4ade80">9</div><div class="roi-metric-label">Bulletins<br>générés</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#fbbf24">2,25M</div><div class="roi-metric-label">FCFA masse<br>salariale</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#93c5fd">340k</div><div class="roi-metric-label">FCFA primes<br>versées</div></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Employé</th><th>Salaire base</th><th>Heures supp</th><th>Prime ventes</th><th>Total net</th><th>Envoyé</th></tr></thead>
+            <tbody>
+              <tr><td><div class="cand-cell"><div class="avatar">KD</div><div><div class="cand-name">Khadija Diallo</div><div class="cand-email">Commerciale</div></div></div></td><td style="font-family:var(--font-d);font-size:13px;color:var(--text-secondary)">250 000</td><td style="font-size:12px;color:#059669">+0</td><td style="font-size:12px;color:#fbbf24">+85 000</td><td style="font-family:var(--font-d);font-size:15px;font-weight:700;color:#059669">335 000 FCFA</td><td><span class="badge b-retenu">✓ WhatsApp</span></td></tr>
+              <tr><td><div class="cand-cell"><div class="avatar">OB</div><div><div class="cand-name">Omar Ba</div><div class="cand-email">Livreur</div></div></div></td><td style="font-family:var(--font-d);font-size:13px;color:var(--text-secondary)">200 000</td><td style="font-size:12px;color:#059669">+24 000</td><td style="font-size:12px;color:var(--text-muted)">+0</td><td style="font-family:var(--font-d);font-size:15px;font-weight:700;color:#059669">224 000 FCFA</td><td><span class="badge b-retenu">✓ WhatsApp</span></td></tr>
+              <tr><td><div class="cand-cell"><div class="avatar">AS</div><div><div class="cand-name">Aminata Sow</div><div class="cand-email">Caissière</div></div></div></td><td style="font-family:var(--font-d);font-size:13px;color:var(--text-secondary)">250 000</td><td style="font-size:12px;color:#059669">+0</td><td style="font-size:12px;color:var(--text-muted)">+0</td><td style="font-family:var(--font-d);font-size:15px;font-weight:700;color:#059669">250 000 FCFA</td><td><span class="badge b-retenu">✓ WhatsApp</span></td></tr>
+              <tr><td><div class="cand-cell"><div class="avatar">MT</div><div><div class="cand-name">Moussa Thiam</div><div class="cand-email">Menuisier</div></div></div></td><td style="font-family:var(--font-d);font-size:13px;color:var(--text-secondary)">300 000</td><td style="font-size:12px;color:#059669">+16 000</td><td style="font-size:12px;color:var(--text-muted)">+0</td><td style="font-family:var(--font-d);font-size:15px;font-weight:700;color:#059669">316 000 FCFA</td><td><span class="badge b-retenu">✓ WhatsApp</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ VUE MARKETING ════ -->
+    <div id="view-marketing" class="view" style="display:none">
+      <div class="roi-banner" style="margin-bottom:22px">
+        <div class="roi-left"><h2>🎙️ Marketing IA — Performances mai 2026</h2><p>Scripts générés par IA, voix off clonée de la cofondatrice, publications multi-plateformes en 1 clic. Contenu professionnel sans agence.</p></div>
+        <div class="roi-metrics">
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#fbbf24">30</div><div class="roi-metric-label">Posts publiés<br>ce mois</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#4ade80">+47%</div><div class="roi-metric-label">Engagement<br>vs mois dernier</div></div>
+          <div class="roi-metric"><div class="roi-metric-val" style="color:#93c5fd">12</div><div class="roi-metric-label">Scripts voix off<br>générés</div></div>
+        </div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">
+        <div class="kpi-card s1" style="--kc:#E1306C"><div class="kpi-icon">📸</div><div class="kpi-value">8 240</div><div class="kpi-label">Vues Instagram</div></div>
+        <div class="kpi-card s2" style="--kc:#000"><div class="kpi-icon">🎵</div><div class="kpi-value">24 500</div><div class="kpi-label">Vues TikTok</div></div>
+        <div class="kpi-card s3" style="--kc:#1877F2"><div class="kpi-icon">👍</div><div class="kpi-value">3 180</div><div class="kpi-label">Portée Facebook</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Post</th><th>Plateforme</th><th>Vues</th><th>Likes</th><th>Messages reçus</th><th>Voix off IA</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:600;font-size:13px">Canapé Lomé — Promo juin</td><td><span class="poste-badge">TikTok + Insta</span></td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#059669">6 420</td><td>312</td><td style="color:#2E74B5;font-weight:600">28</td><td><span class="badge b-retenu">✓ Clonée</span></td></tr>
+              <tr><td style="font-weight:600;font-size:13px">Chambre complète Abidjan</td><td><span class="poste-badge">Facebook</span></td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#d97706">1 840</td><td>87</td><td style="color:#2E74B5;font-weight:600">11</td><td><span class="badge b-attente">Texte seul</span></td></tr>
+              <tr><td style="font-weight:600;font-size:13px">Bureau Directeur — Arrivage</td><td><span class="poste-badge">TikTok</span></td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#059669">9 200</td><td>541</td><td style="color:#2E74B5;font-weight:600">44</td><td><span class="badge b-retenu">✓ Clonée</span></td></tr>
+              <tr><td style="font-weight:600;font-size:13px">Cuisine équipée moderne</td><td><span class="poste-badge">Insta + Facebook</span></td><td style="font-family:var(--font-d);font-size:14px;font-weight:700;color:#059669">4 100</td><td>198</td><td style="color:#2E74B5;font-weight:600">17</td><td><span class="badge b-retenu">✓ Clonée</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ VUE RECRUTEMENT (défaut) ════ -->
+    <div id="view-recrutement" class="view">
+
+    <!-- ROI BANNER -->
+    <div class="roi-banner">
+      <div class="roi-left">
+        <h2>💡 Ce que cette automatisation vous fait gagner</h2>
+        <p>Traitement de 70 CVs en moins de 30 minutes sans intervention humaine. Chaque candidat évalué sur 5 critères, trié, notifié automatiquement. Fini les heures de lecture manuelle.</p>
+      </div>
+      <div class="roi-metrics">
+        <div class="roi-metric">
+          <div class="roi-metric-val" style="color:#fbbf24">35h</div>
+          <div class="roi-metric-label">économisées<br>par campagne</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-val" style="color:#4ade80">140k</div>
+          <div class="roi-metric-label">FCFA économisés<br>par recrutement</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-val" style="color:#93c5fd">30min</div>
+          <div class="roi-metric-label">pour traiter<br>70 CVs</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-val" style="color:#f9a8d4">100%</div>
+          <div class="roi-metric-label">candidats<br>notifiés auto</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS POSTES -->
+    <div class="tabs" id="tabs-postes">
+      <button class="tab active" onclick="selectPoste('')" data-poste="">Tous les postes</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card s1" style="--kc:#2E74B5">
+        <div class="kpi-icon">👥</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-label">Total candidats</div>
+      </div>
+      <div class="kpi-card s2" style="--kc:#059669">
+        <div class="kpi-icon">✅</div>
+        <div class="kpi-value" id="kpi-retenu">—</div>
+        <div class="kpi-label">Retenus ≥ 20</div>
+      </div>
+      <div class="kpi-card s3" style="--kc:#dc2626">
+        <div class="kpi-icon">✕</div>
+        <div class="kpi-value" id="kpi-rejete">—</div>
+        <div class="kpi-label">Rejetés</div>
+      </div>
+      <div class="kpi-card s4" style="--kc:#d97706">
+        <div class="kpi-icon">⭐</div>
+        <div class="kpi-value" id="kpi-avg">—</div>
+        <div class="kpi-label">Note moyenne /25</div>
+      </div>
+      <div class="kpi-card s5" style="--kc:#7c3aed">
+        <div class="kpi-icon">📍</div>
+        <div class="kpi-value" id="kpi-dist">—</div>
+        <div class="kpi-label">Distance moy. km</div>
+      </div>
+      <div class="kpi-card s6" style="--kc:#dc2626;cursor:pointer" onclick="scrollToErrors()">
+        <div class="kpi-icon">⚠️</div>
+        <div class="kpi-value" id="kpi-erreurs" style="color:var(--danger)">—</div>
+        <div class="kpi-label">CVs en erreur</div>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" id="search" type="text" placeholder="Nom, email, ville, téléphone…" oninput="filterData()">
+        </div>
+        <select class="filter-select" id="f-status" onchange="filterData()">
+          <option value="">Tous les statuts</option>
+          <option value="Retenue">Retenus</option>
+          <option value="Rejetee">Rejetés</option>
+          <option value="En attente">En attente</option>
+        </select>
+        <select class="filter-select" id="f-dist" onchange="filterData()">
+          <option value="">Toutes distances</option>
+          <option value="proche">≤ 15 km</option>
+          <option value="moyen">15–40 km</option>
+          <option value="loin">> 40 km</option>
+        </select>
+        <select class="filter-select" id="f-sort" onchange="filterData()">
+          <option value="date_desc">Date ↓</option>
+          <option value="note_desc">Note ↓</option>
+          <option value="note_asc">Note ↑</option>
+          <option value="dist_asc">Distance ↑</option>
+        </select>
+      </div>
+      <span class="result-count" id="result-count"></span>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Candidat</th>
+              <th>Poste visé</th>
+              <th>Localisation</th>
+              <th>Distance</th>
+              <th>Note /25</th>
+              <th title="Adresse · Cohérence · IA · Présentation · Patience">Critères</th>
+              <th>Statut</th>
+              <th>CV</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ERREURS -->
+    <div class="err-table-wrap" id="err-section">
+      <div class="err-table-header">
+        <div class="err-table-title">⚠️ CVs non traités — à retraiter</div>
+        <button class="btn-retraiter" onclick="marquerRetraite()">✓ Tout marquer retraité</button>
+      </div>
+      <div class="table-scroll">
+        <table style="min-width:500px">
+          <thead><tr><th>Nom du fichier</th><th>Erreur</th><th>Date</th><th>Statut</th></tr></thead>
+          <tbody id="tbody-erreurs">
+            <tr><td colspan="4"><div class="empty"><div class="empty-icon">✅</div><div class="empty-title">Aucune erreur</div><div class="empty-sub">Tous les CVs ont été traités</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div><!-- fin view-recrutement -->
+
+  </main>
+</div>
+
+<!-- OVERLAY PANEL -->
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<div class="panel" id="panel">
+  <div class="p-header">
+    <button class="p-close" onclick="closePanel()">✕</button>
+    <div class="p-name" id="p-name"></div>
+    <div class="p-meta" id="p-meta"></div>
+  </div>
+  <div class="p-body" id="p-body"></div>
+</div>
+
+<script>
+const SB_URL = 'https://yuceracjlmvetiepljhy.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1Y2VyYWNqbG12ZXRpZXBsamh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MjU2MDAsImV4cCI6MjA5NTQwMTYwMH0.9YNfbRzr-Bqlwxekddxdt4vf3v8FLLadTPy1JoxI5UE';
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+let ALL = [], ALL_ERREURS = [], CURRENT_POSTE = '';
+
+/* ── SIDEBAR & VUES ── */
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sb-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-overlay').classList.remove('open');
+}
+
+function showView(v) {
+  closeSidebar();
+  document.querySelectorAll('.view').forEach(el => el.style.display = 'none');
+  const target = document.getElementById('view-' + v);
+  if (target) target.style.display = 'block';
+  // active state sidebar
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  const headerTitles = {
+    recrutement: 'Tri & Scoring CV',
+    crm:         'CRM Commandes',
+    stock:       'Inventaire & Stock',
+    pointage:    'Pointage WhatsApp',
+    salaires:    'Bulletins de Salaires',
+    marketing:   'Marketing IA'
+  };
+  document.querySelector('.h-title').textContent = headerTitles[v] || 'Tableau de bord';
+}
+
+function toggleAcc(btn) {
+  const body = btn.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+}
+
+/* ── LOAD ── */
+async function loadData() {
+  const btn = document.getElementById('btn-refresh');
+  btn.textContent = '↻ Chargement…'; btn.disabled = true;
+  skeleton();
+
+  try {
+    const r = await db.from('evaluations_cv').select('*').order('created_at', { ascending: false });
+    if (!r.error) ALL = r.data || [];
+  } catch(e) { console.warn(e); }
+
+  try {
+    const r = await db.from('cv_erreurs').select('*').order('created_at', { ascending: false });
+    if (!r.error) ALL_ERREURS = r.data || [];
+  } catch(e) { /* table absente */ }
+
+  btn.textContent = '↻ Actualiser'; btn.disabled = false;
+  buildTabs(); kpis(); filterData(); renderErreurs();
+}
+
+/* ── TABS ── */
+function buildTabs() {
+  const postes = [...new Set(ALL.map(r => r.poste_vise).filter(Boolean))].sort();
+  const wrap = document.getElementById('tabs-postes');
+  wrap.innerHTML = `<button class="tab ${!CURRENT_POSTE?'active':''}" onclick="selectPoste('')" data-poste="">Tous les postes</button>`;
+  postes.forEach(p => {
+    const nb = ALL.filter(r => r.poste_vise === p).length;
+    const b = document.createElement('button');
+    b.className = 'tab' + (CURRENT_POSTE===p?' active':'');
+    b.dataset.poste = p; b.onclick = () => selectPoste(p);
+    b.textContent = `${p} (${nb})`;
+    wrap.appendChild(b);
+  });
+}
+
+function selectPoste(p) {
+  CURRENT_POSTE = p;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.poste===p));
+  kpis(); filterData();
+}
+
+function base() { return CURRENT_POSTE ? ALL.filter(r => r.poste_vise===CURRENT_POSTE) : ALL; }
+
+/* ── KPIs ── */
+function kpis() {
+  const b = base();
+  const total  = b.length;
+  const retenu = b.filter(r => r.statut_candidature==='Retenue').length;
+  const rejete = b.filter(r => r.statut_candidature==='Rejetee').length;
+  const notes  = b.map(r => r.note_globale).filter(n => n!=null);
+  const avg    = notes.length ? (notes.reduce((a,c)=>a+c,0)/notes.length).toFixed(1) : '—';
+  const dists  = b.map(r => r.distance_km).filter(d => d!=null && d>0);
+  const adist  = dists.length ? Math.round(dists.reduce((a,c)=>a+c,0)/dists.length) : '—';
+  countUp('kpi-total', total);
+  countUp('kpi-retenu', retenu);
+  countUp('kpi-rejete', rejete);
+  document.getElementById('kpi-avg').textContent  = avg;
+  document.getElementById('kpi-dist').textContent = adist;
+  const err = ALL_ERREURS.filter(r => r.statut==='A retraiter').length;
+  err>0 ? countUp('kpi-erreurs', err) : (document.getElementById('kpi-erreurs').textContent='0');
+}
+
+function countUp(id, target) {
+  const el = document.getElementById(id); if (!el) return;
+  let n=0; const steps=28; const inc=target/steps;
+  const t = setInterval(()=>{ n+=inc; if(n>=target){el.textContent=target;clearInterval(t);}else el.textContent=Math.floor(n); },16);
+}
+
+/* ── FILTRE ── */
+function filterData() {
+  const q  = document.getElementById('search').value.toLowerCase();
+  const st = document.getElementById('f-status').value;
+  const di = document.getElementById('f-dist').value;
+  const so = document.getElementById('f-sort').value;
+  let rows = base().filter(r => {
+    const mq = !q || [r.nom_complet,r.email,r.ville,r.region,r.pays,r.telephone,r.poste_vise,r.adresse_complete].some(v=>(v||'').toLowerCase().includes(q));
+    const ms = !st || r.statut_candidature===st;
+    const md = !di||(di==='proche'&&r.distance_km<=15)||(di==='moyen'&&r.distance_km>15&&r.distance_km<=40)||(di==='loin'&&r.distance_km>40);
+    return mq&&ms&&md;
+  });
+  rows.sort((a,b)=>{ if(so==='note_desc')return(b.note_globale||0)-(a.note_globale||0); if(so==='note_asc')return(a.note_globale||0)-(b.note_globale||0); if(so==='dist_asc')return(a.distance_km||999)-(b.distance_km||999); return new Date(b.created_at)-new Date(a.created_at); });
+  document.getElementById('result-count').textContent = `${rows.length} candidat${rows.length!==1?'s':''}`;
+  renderTable(rows);
+}
+
+/* ── TABLE ── */
+function renderTable(rows) {
+  const tb = document.getElementById('tbody');
+  if (!rows.length) { tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Aucun résultat</div><div class="empty-sub">Modifiez vos filtres</div></div></td></tr>`; return; }
+  tb.innerHTML = rows.map((r,i)=>{
+    const init = initials(r.nom_complet);
+    const max  = r.note_maximale||25;
+    const nc   = noteColor(r.note_globale, max);
+    const pct  = ((r.note_globale||0)/max*100).toFixed(0);
+    const dt   = r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : '—';
+    const loc  = [r.ville,r.region].filter(Boolean).join(', ')||r.pays||'—';
+    const cvLink = r.lien_cv ? `<a class="cv-link" href="${r.lien_cv}" target="_blank" onclick="event.stopPropagation()">📄 CV</a>` : `<span style="color:var(--text-muted);font-size:11px">—</span>`;
+    return `<tr onclick="openPanel('${r.id}')" style="animation-delay:${i*18}ms">
+      <td><div class="cand-cell"><div class="avatar">${init}</div><div><div class="cand-name">${r.nom_complet||'—'}</div><div class="cand-email">${r.email||''}</div><div class="cand-phone">${r.telephone||''}</div></div></div></td>
+      <td><span class="poste-badge" title="${r.poste_vise||''}">${r.poste_vise||'—'}</span></td>
+      <td style="color:var(--text-secondary);font-size:12px">${loc}</td>
+      <td>${distBadge(r.distance_km)}</td>
+      <td><div class="score-cell"><span class="score-num" style="color:${nc}">${r.note_globale??'—'}</span><div class="score-track"><div class="score-fill" style="width:${pct}%;background:${nc}"></div></div><span class="score-max">/${max}</span></div></td>
+      <td><div class="mini-scores">${ms(r.score_adresse,'Adresse')}${ms(r.score_coherence,'Cohérence')}${ms(r.score_ia,'Maîtrise IA')}${ms(r.score_presentation,'Présentation')}${ms(r.score_patience,'Patience')}</div></td>
+      <td>${statusBadge(r.statut_candidature)}</td>
+      <td>${cvLink}</td>
+      <td style="color:var(--text-muted);font-size:11px;white-space:nowrap">${dt}</td>
+      <td><span class="row-arrow">→</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function ms(v,label){ const cls=v===5?'ms5':v===3?'ms3':'ms1'; return `<span class="ms ${cls}" title="${label}: ${v??'?'}/5">${v??'?'}</span>`; }
+function statusBadge(s){ if(s==='Retenue')return`<span class="badge b-retenu">Retenu</span>`; if(s==='Rejetee')return`<span class="badge b-rejete">Rejeté</span>`; return`<span class="badge b-attente">En attente</span>`; }
+function distBadge(km){ if(!km)return`<span style="color:var(--text-muted);font-size:11px">—</span>`; const cls=km<=15?'d-proche':km<=40?'d-moyen':'d-loin'; const dot=km<=15?'🟢':km<=40?'🟡':'🔴'; return`<span class="dist-b ${cls}">${dot} ${km} km</span>`; }
+function noteColor(v,max){ const p=(v||0)/(max||25); return p>=0.8?'#059669':p>=0.6?'#d97706':'#dc2626'; }
+function initials(name){ if(!name)return'?'; const p=name.trim().split(' ').filter(Boolean); return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():name[0].toUpperCase(); }
+
+/* ── PANEL ── */
+function openPanel(id) {
+  const r = ALL.find(x => x.id===id); if(!r) return;
+  document.getElementById('p-name').textContent = r.nom_complet||'—';
+  document.getElementById('p-meta').innerHTML = `${statusBadge(r.statut_candidature)}<span class="poste-badge" style="max-width:200px">${r.poste_vise||''}</span>${r.created_at?`<span style="font-size:10.5px;color:var(--text-muted)">· ${new Date(r.created_at).toLocaleDateString('fr-FR')}</span>`:''}${r.lien_cv?`<a class="cv-link" href="${r.lien_cv}" target="_blank">📄 Voir le CV</a>`:''}`;
+  const exps=sj(r.experiences,[]), forms=sj(r.formations,[]), comps=sj(r.competences,[]), langs=sj(r.langues,[]);
+  const max=r.note_maximale||25, nc=noteColor(r.note_globale,max), npct=((r.note_globale||0)/max*100).toFixed(0);
+  const SCORES=[
+    {label:'📍 Adresse',score:r.score_adresse,justif:r.justification_adresse},
+    {label:'💼 Cohérence poste',score:r.score_coherence,justif:r.justification_coherence},
+    {label:'🤖 Maîtrise IA',score:r.score_ia,justif:r.justification_ia},
+    {label:'📝 Présentation',score:r.score_presentation,justif:r.justification_presentation},
+    {label:'⏳ Patience',score:r.score_patience,justif:r.justification_patience},
+  ];
+  document.getElementById('p-body').innerHTML = `
+    <div class="note-globe">
+      <div class="note-big" style="color:${nc}">${r.note_globale??'—'}</div>
+      <div class="note-sub">points sur ${max}</div>
+      <div class="note-bar-track"><div class="note-bar-fill" style="width:${npct}%;background:${nc}"></div></div>
+      <div class="note-bar-labels"><span>0</span><span>Seuil retenu : 20</span><span>${max}</span></div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-title">Coordonnées</div>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">Téléphone</span><span class="info-value">${r.telephone||'—'}</span></div>
+        <div class="info-item"><span class="info-label">Email</span><span class="info-value" style="font-size:11px;word-break:break-all">${r.email||'—'}</span></div>
+        <div class="info-item"><span class="info-label">Ville</span><span class="info-value">${r.ville||'—'}</span></div>
+        <div class="info-item"><span class="info-label">Région</span><span class="info-value">${r.region||'—'}</span></div>
+        <div class="info-item"><span class="info-label">Distance NBC</span><span class="info-value">${r.distance_km?r.distance_km+' km':'—'}</span></div>
+        <div class="info-item"><span class="info-label">Pays</span><span class="info-value">${r.pays||'—'}</span></div>
+        ${r.adresse_complete?`<div class="info-item" style="grid-column:span 2"><span class="info-label">Adresse</span><span class="info-value">${r.adresse_complete}</span></div>`:''}
+      </div>
+    </div>
+    <div class="p-section">
+      <div class="p-section-title">Évaluation par critère</div>
+      ${SCORES.map(s=>{const c=s.score===5?'#059669':s.score===3?'#d97706':'#dc2626';const l=s.score===5?'Excellent':s.score===3?'Moyen':'Faible';const p=((s.score||0)/5*100).toFixed(0);return`<div class="sd-row"><div class="sd-head"><span class="sd-label">${s.label}</span><span class="sd-badge" style="background:${c}18;color:${c};border:1px solid ${c}28">${s.score??'?'}/5 — ${l}</span></div><div class="sd-track"><div class="sd-fill" style="width:${p}%;background:${c}"></div></div>${s.justif?`<div class="sd-justif">${s.justif}</div>`:''}</div>`;}).join('')}
+    </div>
+    ${exps.length?`<div class="p-section"><div class="p-section-title">Expériences (${exps.length})</div>${exps.map(e=>`<div class="tl-item"><div class="tl-dot"></div><div><div class="tl-title">${e.poste||'—'}</div><div class="tl-sub">${[e.entreprise,e.periode,e.duree_mois?e.duree_mois+' mois':null].filter(Boolean).join(' · ')}</div></div></div>`).join('')}</div>`:''}
+    ${forms.length?`<div class="p-section"><div class="p-section-title">Formations (${forms.length})</div>${forms.map(f=>`<div class="tl-item"><div class="tl-dot" style="background:var(--accent-light)"></div><div><div class="tl-title">${f.diplome||'—'}</div><div class="tl-sub">${[f.etablissement,f.annee].filter(Boolean).join(' · ')}</div></div></div>`).join('')}</div>`:''}
+    ${comps.length?`<div class="p-section"><div class="p-section-title">Compétences (${comps.length})</div><div class="tags">${comps.map(c=>`<span class="tag">${c}</span>`).join('')}</div></div>`:''}
+    ${langs.length?`<div class="p-section"><div class="p-section-title">Langues</div><div class="tags">${langs.map(l=>`<span class="tag">${l.langue||l}${l.niveau?' · '+l.niveau:''}</span>`).join('')}</div></div>`:''}
+  `;
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('panel').classList.add('open');
+}
+
+function closePanel(){ document.getElementById('overlay').classList.remove('open'); document.getElementById('panel').classList.remove('open'); }
+
+/* ── ERREURS ── */
+function renderErreurs() {
+  const tb = document.getElementById('tbody-erreurs');
+  if(!ALL_ERREURS.length){ tb.innerHTML=`<tr><td colspan="4"><div class="empty"><div class="empty-icon">✅</div><div class="empty-title">Aucune erreur</div><div class="empty-sub">Tous les CVs ont été traités</div></div></td></tr>`; return; }
+  tb.innerHTML = ALL_ERREURS.map(r=>`<tr><td style="font-weight:600;font-size:12px">${r.nom_fichier||'—'}</td><td style="font-size:11px;color:var(--text-secondary);max-width:280px;word-break:break-word">${r.erreur||'—'}</td><td style="font-size:11px;color:var(--text-muted);white-space:nowrap">${r.created_at?new Date(r.created_at).toLocaleDateString('fr-FR'):'—'}</td><td><span class="badge ${r.statut==='A retraiter'?'b-rejete':'b-retenu'}">${r.statut==='A retraiter'?'À retraiter':'Retraité'}</span></td></tr>`).join('');
+}
+
+async function marquerRetraite() {
+  const ids = ALL_ERREURS.filter(r=>r.statut==='A retraiter').map(r=>r.id);
+  if(!ids.length) return;
+  await db.from('cv_erreurs').update({statut:'Retraite'}).in('id',ids);
+  loadData();
+}
+
+function scrollToErrors(){ document.getElementById('err-section').scrollIntoView({behavior:'smooth',block:'start'}); }
+
+/* ── SKELETON ── */
+function skeleton(){ document.getElementById('tbody').innerHTML=Array(8).fill(0).map(()=>`<tr>${Array(10).fill(0).map((_,i)=>`<td><div class="skel" style="height:${i===0?32:14}px;width:${[180,110,90,65,100,110,75,40,65,20][i]||60}px"></div></td>`).join('')}</tr>`).join(''); }
+
+function sj(v,fb){ if(!v)return fb; if(typeof v==='object')return Array.isArray(v)?v:fb; try{return JSON.parse(v);}catch{return fb;} }
+
+// Init vue par défaut
+document.querySelectorAll('.view').forEach(el => el.style.display='none');
+const dv = document.getElementById('view-recrutement');
+if(dv) dv.style.display='block';
+loadData();
+</script>
+</body>
+</html>
